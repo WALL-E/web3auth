@@ -88,25 +88,25 @@ app.post('/getUserToken', function (req, res) {
     if(!result) {
         res.status(400).json({ error: "signature not valid!" });
     } else {
-        const data = address + "," + uid
-        const encrypted = aesEncrypt(data);
-        res.json({ result: encrypted })
+        const plaintext = address + "," + uid
+        const ciphertext = aesEncrypt(plaintext);
+        res.json({ result: ciphertext })
     }
     res.end();
 })
 
 app.post('/checkUserToken', function (req, res) {
     // console.log(req.body)
-    const encrypted = req.body.token;
+    const ciphertext = req.body.token;
 
-    if (!encrypted) {
+    if (!ciphertext) {
         res.status(400).json({ error: "parms {token} must be set" })
         return res.end();
     }
 
     try {
-        const decrypted = aesDecrypt(encrypted);
-        const tmp = decrypted.split(",")
+        const plaintext = aesDecrypt(ciphertext);
+        const tmp = plaintext.split(",")
 
         res.json({
             result: {
