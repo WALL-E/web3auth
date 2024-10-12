@@ -1,8 +1,6 @@
 #!/usr/local/bin/node
 //
-//
-// Ref: https://juejin.cn/post/6844903969395834887
-//
+// Ref: https://nodejs.org/api/crypto.html
 //
 
 const express = require('express')
@@ -12,7 +10,10 @@ const app = express()
 const port = 3000
 
 const slat = "7edee98fe8cda35cf6576dcaa6a5a26f"
-const key = 'Password!';
+// const key = crypto.randomBytes(32);
+const key = "b6c9213123d7135575dc40776bd67acf"
+// const iv = crypto.randomBytes(16);
+const iv = "356ed43e5206456e"
 
 app.use(express.json());
 
@@ -21,14 +22,14 @@ function sha256(content) {
 }
 
 function aesEncrypt(data, key) {
-  const cipher = crypto.createCipher('aes192', key);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   var crypted = cipher.update(data, 'utf8', 'hex');
   crypted += cipher.final('hex');
   return crypted;
 }
 
 function aesDecrypt(encrypted, key) {
-  const decipher = crypto.createDecipher('aes192', key);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
   var decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
@@ -39,7 +40,7 @@ app.get('/', (req, res) => {
 })
 
 app.post('/getUserId', function (req, res) {
-    console.log(req.body)
+    // console.log(req.body)
     const address = req.body.address;
     const hash = sha256(address + slat)
     const uid = hash.substring(0, 8)
@@ -59,17 +60,15 @@ app.post('/getUserToken', function (req, res) {
     const data = address + "," + uid
     const encrypted = aesEncrypt(data, key);
 
-
     res.json({ result: encrypted })
     res.end();
 })
 
 app.post('/checkUserToken', function (req, res) {
-    console.log(req.body)
+    // console.log(req.body)
     const encrypted = req.body.token;
 
     const decrypted = aesDecrypt(encrypted, key);
-    console.log(decrypted)
     const tmp = decrypted.split(",")
 
     res.json({
