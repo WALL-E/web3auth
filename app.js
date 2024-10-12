@@ -43,12 +43,12 @@ function aesDecrypt(ciphertext) {
 
 app.get('/', (req, res) => {
     res.json({ message: "Web3 User Authentication Service" })
-    res.end();
+    return res.end();
 })
 
 app.get('/health', (req, res) => {
     res.json({ message: "ok" })
-    res.end();
+    return res.end();
 })
 
 app.post('/getUserId', function (req, res) {
@@ -61,13 +61,13 @@ app.post('/getUserId', function (req, res) {
         // Maximum number of users supported,
         // The probability of collision is extremely small
         //
-        // C(56,12) = 558,383,307,300
+        // C(36,16) = 7,307,872,110
         //
-        const uid = hash.substring(0, 12)
+        const uid = hash.substring(0, 16)
         res.json({ result: uid })
     }
 
-    res.end();
+    return res.end();
 })
 
 app.post('/getUserToken', function (req, res) {
@@ -89,28 +89,29 @@ app.post('/getUserToken', function (req, res) {
             bs58.decode(signature),
             publicKey.toBytes(),
         );
+        if(!result) {
+            res.status(400).json({ error: "signature not valid!" });
+            return res.end();
+        }
     } catch (error) {
         console.error('Error in getUserToken[1]:', error.message);
         res.status(500).json({ error: "Internal server error" });
+        return res.end();
     }
 
     //
     // generate token
     //
-    if(!result) {
-        res.status(400).json({ error: "signature not valid!" });
-    } else {
-        const plaintext = address + "," + uid
-        try {
-            const ciphertext = aesEncrypt(plaintext);
-        } catch (error) {
-            console.error('Error in getUserToken[2]:', error.message);
-            res.status(500).json({ error: "Internal server error" });
-        }
-
+    const plaintext = address + "," + uid
+    try {
+        const ciphertext = aesEncrypt(plaintext);
         res.json({ result: ciphertext })
+        return res.end();
+    } catch (error) {
+        console.error('Error in getUserToken[2]:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+        return res.end();
     }
-    res.end();
 })
 
 app.post('/checkUserToken', function (req, res) {
@@ -130,10 +131,11 @@ app.post('/checkUserToken', function (req, res) {
                 uid: tmp[1]
             }
         })
-        res.end();
+        return res.end();
     } catch (error) {
         console.error('Error in checkUserToken:', error.message);
         res.status(500).json({ error: "Internal server error" });
+        return res.end();
     }
 })
 
