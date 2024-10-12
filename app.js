@@ -52,13 +52,18 @@ app.get('/health', (req, res) => {
 })
 
 app.post('/getUserId', function (req, res) {
-    // console.log(req.body)
     const address = req.body.address;
     if (!address) {
         res.status(400).json({ error: "parms {address} must be set" })
     } else {
         const hash = sha256(address + SLAT)
-        const uid = hash.substring(0, 8)
+        //
+        // Maximum number of users supported,
+        // The probability of collision is extremely small
+        //
+        // C(56,12) = 558,383,307,300
+        //
+        const uid = hash.substring(0, 12)
         res.json({ result: uid })
     }
 
@@ -66,7 +71,6 @@ app.post('/getUserId', function (req, res) {
 })
 
 app.post('/getUserToken', function (req, res) {
-    // console.log(req.body)
     const address = req.body.address;
     const signature = req.body.signature;
     const uid = req.body.uid;
@@ -77,28 +81,40 @@ app.post('/getUserToken', function (req, res) {
     //
     // verify signature
     //
-    const publicKey = new web3.PublicKey(address);
-    const messageBytes = new TextEncoder().encode(uid)
-    const result = tweetnacl.sign.detached.verify(
-          messageBytes,
-          bs58.decode(signature),
-          publicKey.toBytes(),
-    );
-    // console.log("verify:", result)
+    try {
+        const publicKey = new web3.PublicKey(address);
+        const messageBytes = new TextEncoder().encode(uid)
+        const result = tweetnacl.sign.detached.verify(
+            messageBytes,
+            bs58.decode(signature),
+            publicKey.toBytes(),
+        );
+    } catch (error) {
+        console.error('Error in getUserToken[1]:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+
+    //
+    // generate token
+    //
     if(!result) {
         res.status(400).json({ error: "signature not valid!" });
     } else {
         const plaintext = address + "," + uid
-        const ciphertext = aesEncrypt(plaintext);
+        try {
+            const ciphertext = aesEncrypt(plaintext);
+        } catch (error) {
+            console.error('Error in getUserToken[2]:', error.message);
+            res.status(500).json({ error: "Internal server error" });
+        }
+
         res.json({ result: ciphertext })
     }
     res.end();
 })
 
 app.post('/checkUserToken', function (req, res) {
-    // console.log(req.body)
     const ciphertext = req.body.token;
-
     if (!ciphertext) {
         res.status(400).json({ error: "parms {token} must be set" })
         return res.end();
