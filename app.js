@@ -6,6 +6,10 @@
 const express = require('express')
 const crypto = require('crypto')
 
+const web3 = require("@solana/web3.js");
+const tweetnacl = require("tweetnacl");
+const bs58 = require("bs58");
+
 const app = express()
 const port = 3000
 
@@ -49,18 +53,28 @@ app.post('/getUserId', function (req, res) {
 })
 
 app.post('/getUserToken', function (req, res) {
-    console.log(req.body)
+    // console.log(req.body)
     const address = req.body.address;
     const signature = req.body.signature;
     const uid = req.body.uid;
     //
-    // TODO: verify signature
+    // verify signature
     //
-
-    const data = address + "," + uid
-    const encrypted = aesEncrypt(data, key);
-
-    res.json({ result: encrypted })
+    const publicKey = new web3.PublicKey(address);
+    const messageBytes = new TextEncoder().encode(uid)
+    const result = tweetnacl.sign.detached.verify(
+          messageBytes,
+          bs58.decode(signature),
+          publicKey.toBytes(),
+    );
+    // console.log("verify:", result)
+    if(!result) {
+        res.status(400).json({ error: "signature not valid!" });
+    } else {
+        const data = address + "," + uid
+        const encrypted = aesEncrypt(data, key);
+        res.json({ result: encrypted })
+    }
     res.end();
 })
 
