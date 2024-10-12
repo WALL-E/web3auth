@@ -26,29 +26,42 @@ function sha256(content) {
 }
 
 function aesEncrypt(data, key) {
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  var crypted = cipher.update(data, 'utf8', 'hex');
-  crypted += cipher.final('hex');
-  return crypted;
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    var crypted = cipher.update(data, 'utf8', 'hex');
+    crypted += cipher.final('hex');
+
+    return crypted;
 }
 
 function aesDecrypt(encrypted, key) {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  var decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
 }
 
 app.get('/', (req, res) => {
-  res.send('Hello Builder!')
+    res.json({ message: "Web3 User Authentication Service" })
+    res.end();
+})
+
+app.get('/health', (req, res) => {
+    res.json({ message: "ok" })
+    res.end();
 })
 
 app.post('/getUserId', function (req, res) {
     // console.log(req.body)
     const address = req.body.address;
-    const hash = sha256(address + slat)
-    const uid = hash.substring(0, 8)
-    res.json({ result: uid })
+    if (!address) {
+        res.status(400).json({ error: "parms {address} must be set" })
+    } else {
+        const hash = sha256(address + slat)
+        const uid = hash.substring(0, 8)
+        res.json({ result: uid })
+    }
+
     res.end();
 })
 
@@ -57,6 +70,10 @@ app.post('/getUserToken', function (req, res) {
     const address = req.body.address;
     const signature = req.body.signature;
     const uid = req.body.uid;
+    if (!address || !signature || !uid) {
+        res.status(400).json({ error: "parms {address, signature, uid} must be set" })
+        return res.end();
+    }
     //
     // verify signature
     //
@@ -81,6 +98,11 @@ app.post('/getUserToken', function (req, res) {
 app.post('/checkUserToken', function (req, res) {
     // console.log(req.body)
     const encrypted = req.body.token;
+
+    if (!encrypted) {
+        res.status(400).json({ error: "parms {token} must be set" })
+        return res.end();
+    }
 
     const decrypted = aesDecrypt(encrypted, key);
     const tmp = decrypted.split(",")
