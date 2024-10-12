@@ -1,8 +1,10 @@
 #!/usr/local/bin/node
+
 //
 // Ref: https://nodejs.org/api/crypto.html
 //
 
+require('dotenv').config();
 const express = require('express')
 const crypto = require('crypto')
 
@@ -11,13 +13,11 @@ const tweetnacl = require("tweetnacl");
 const bs58 = require("bs58");
 
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000;
 
-const slat = "7edee98fe8cda35cf6576dcaa6a5a26f"
-// const key = crypto.randomBytes(32);
-const key = "b6c9213123d7135575dc40776bd67acf"
-// const iv = crypto.randomBytes(16);
-const iv = "356ed43e5206456e"
+const SLAT = process.env.SALT;
+const KEY = process.env.KEY;
+const IV = process.env.IV;
 
 app.use(express.json());
 
@@ -25,17 +25,17 @@ function sha256(content) {
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
-function aesEncrypt(data, key) {
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    var crypted = cipher.update(data, 'utf8', 'hex');
+function aesEncrypt(plaintext) {
+    const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
+    var crypted = cipher.update(plaintext, 'utf8', 'hex');
     crypted += cipher.final('hex');
 
     return crypted;
 }
 
-function aesDecrypt(encrypted, key) {
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+function aesDecrypt(ciphertext) {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, IV);
+    var decrypted = decipher.update(ciphertext, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     return decrypted;
@@ -57,7 +57,7 @@ app.post('/getUserId', function (req, res) {
     if (!address) {
         res.status(400).json({ error: "parms {address} must be set" })
     } else {
-        const hash = sha256(address + slat)
+        const hash = sha256(address + SLAT)
         const uid = hash.substring(0, 8)
         res.json({ result: uid })
     }
@@ -89,7 +89,7 @@ app.post('/getUserToken', function (req, res) {
         res.status(400).json({ error: "signature not valid!" });
     } else {
         const data = address + "," + uid
-        const encrypted = aesEncrypt(data, key);
+        const encrypted = aesEncrypt(data);
         res.json({ result: encrypted })
     }
     res.end();
@@ -104,17 +104,27 @@ app.post('/checkUserToken', function (req, res) {
         return res.end();
     }
 
-    const decrypted = aesDecrypt(encrypted, key);
-    const tmp = decrypted.split(",")
+    try {
+        const decrypted = aesDecrypt(encrypted);
+        const tmp = decrypted.split(",")
 
-    res.json({
-        result: {
-            address: tmp[0],
-            uid: tmp[1]
-        }
-    })
-    res.end();
+        res.json({
+            result: {
+                address: tmp[0],
+                uid: tmp[1]
+            }
+        })
+        res.end();
+    } catch (error) {
+        console.error('Error in checkUserToken:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
 })
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send({ error: "something broke!" });
+});
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
