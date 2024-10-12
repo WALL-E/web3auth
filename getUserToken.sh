@@ -5,6 +5,6 @@ curl -X 'POST' \
   -H 'Content-Type: application/json' \
   -d '{
   "address": "5DkgLGarMN3BNXkGzKUNVW5t2wDCThAhGR22e1deeViy",
-  "uid": "uid-123456",
+  "uid": "10b63928",
   "signature": "signature-123456"
 }'
