@@ -1,5 +1,11 @@
 #!/usr/local/bin/node
 
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+
 //
 // Ref: https://nodejs.org/api/crypto.html
 //
@@ -10,7 +16,7 @@ const crypto = require('crypto')
 
 const web3 = require("@solana/web3.js");
 const tweetnacl = require("tweetnacl");
-const bs58 = require("bs58");
+const bs58 = __importDefault(require("bs58"));
 
 const app = express()
 const port = process.env.PORT || 3000;
@@ -86,7 +92,7 @@ app.post('/getUserToken', function (req, res) {
         const messageBytes = new TextEncoder().encode(uid)
         const result = tweetnacl.sign.detached.verify(
             messageBytes,
-            bs58.decode(signature),
+            bs58.default.decode(signature),
             publicKey.toBytes(),
         );
         if(!result) {
