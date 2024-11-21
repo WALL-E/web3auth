@@ -28,7 +28,7 @@ Web3 User Authentication Service
     -H 'Content-Type: application/json' \
     -d '{
       "address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV",
-      "uid": "c9fe7bf0",
+      "uid": "c9fe7bf01a33e35c",
       "signature": "52VJa6DBU92aMLkm5hVwJDNqQsjzKR3AZvqsX2EdAbtZVfMkzdLcS3oAdGbWP1c29wxYuPZkUNoNm6Eg9Mc7yGJD"
     }'
 
@@ -48,7 +48,7 @@ Web3 User Authentication Service
    {
      "result":{
        "address":"7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV",
-       "uid":"c9fe7bf0"
+       "uid":"c9fe7bf01a33e35c"
      }
    }
    ```
