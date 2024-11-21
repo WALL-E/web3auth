@@ -24,6 +24,8 @@ const port = process.env.PORT || 3000;
 const SLAT = process.env.SALT;
 const KEY = process.env.KEY;
 const IV = process.env.IV;
+const MINBALANCE = process.env.MINBALANCE;
+const CLUSTER = process.env.CLUSTER;
 
 app.use(express.json());
 
@@ -45,6 +47,14 @@ function aesDecrypt(ciphertext) {
     decrypted += decipher.final('utf8');
 
     return decrypted;
+}
+
+async function getBalance(address) {
+    const connection = new web3.Connection(CLUSTER, 'confirmed');
+    const wallet = new web3.PublicKey(address);
+    const balance = await connection.getBalance(wallet);
+
+    return balance;
 }
 
 app.get('/', (req, res) => {
@@ -76,12 +86,21 @@ app.post('/getUserId', function (req, res) {
     return res.end();
 })
 
-app.post('/getUserToken', function (req, res) {
+app.post('/getUserToken', async function (req, res) {
     const address = req.body.address;
     const signature = req.body.signature;
     const uid = req.body.uid;
     if (!address || !signature || !uid) {
         res.status(400).json({ error: "parms {address, signature, uid} must be set" })
+        return res.end();
+    }
+    ///
+    // verify balance
+    //
+    const balance = await getBalance(address)
+    console.log("LAMPORTS:", balance);
+    if (balance < MINBALANCE) {
+        res.status(403).json({ error: `Account balance must be greater than ${MINBALANCE} LAMPORTS` })
         return res.end();
     }
     //
