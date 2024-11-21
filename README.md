@@ -6,7 +6,7 @@ Web3 User Authentication Service
 
 - solana/phantom
 
-# login step
+## Login step
 
 1. /getUserId
    ```
