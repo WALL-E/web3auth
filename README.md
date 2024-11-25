@@ -2,6 +2,14 @@
 
 Web3 User Authentication Service
 
+```mermaid
+sequenceDiagram
+  Client ->>+ Server: Wallet/Address
+  Server ->>- Client: UserId
+  Client ->>+ Server: Wallet/Sign(UserId)
+  Server ->>- Client: Token
+```
+
 ## Supported wallets
 
 - solana/phantom
