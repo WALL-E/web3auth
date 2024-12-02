@@ -164,6 +164,31 @@ app.post('/checkUserToken', function (req, res) {
     }
 })
 
+app.get('/checkUserToken', function (req, res) {
+    const ciphertext = req.get("token");
+    if (!ciphertext) {
+        res.status(400).json({ error: "headers {token} must be set" })
+        return res.end();
+    }
+
+    try {
+        const plaintext = aesDecrypt(ciphertext);
+        const tmp = plaintext.split(",")
+
+        res.json({
+            result: {
+                address: tmp[0],
+                uid: tmp[1]
+            }
+        })
+        return res.end();
+    } catch (error) {
+        console.error('Error in checkUserToken:', error.message);
+        res.status(500).json({ error: "Internal server error" });
+        return res.end();
+    }
+})
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send({ error: "something broke!" });
