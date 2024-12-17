@@ -97,11 +97,13 @@ app.post('/getUserToken', async function (req, res) {
     ///
     // verify balance
     //
-    const balance = await getBalance(address)
-    console.log("LAMPORTS:", balance);
-    if (balance < MINBALANCE) {
-        res.status(403).json({ error: `Account balance must be greater than ${MINBALANCE} LAMPORTS` })
-        return res.end();
+    if (MINBALANCE > 0) {
+        const balance = await getBalance(address)
+        console.log("LAMPORTS:", balance);
+        if (balance < MINBALANCE) {
+            res.status(403).json({ error: `Account balance must be greater than ${MINBALANCE} LAMPORTS` })
+            return res.end();
+        }
     }
     //
     // verify signature
@@ -158,7 +160,7 @@ app.post('/checkUserToken', function (req, res) {
         })
         return res.end();
     } catch (error) {
-        console.error('Error in checkUserToken:', error.message);
+        console.error('Error in checkUserToken[1]:', error.message);
         res.status(500).json({ error: "Internal server error" });
         return res.end();
     }
@@ -183,7 +185,7 @@ app.get('/checkUserToken', function (req, res) {
         })
         return res.end();
     } catch (error) {
-        console.error('Error in checkUserToken:', error.message);
+        console.error('Error in checkUserToken[2]:', error.message);
         res.status(500).json({ error: "Internal server error" });
         return res.end();
     }

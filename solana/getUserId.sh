@@ -16,3 +16,7 @@ curl -X 'POST' \
   -d '{
   "address2": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV"
 }'
+
+
+echo ""
+echo ""
