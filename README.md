@@ -49,7 +49,7 @@ sequenceDiagram
      "result": "bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b6d6bcf8e0c7d542f5e8e288aec067c448"
    }
    ```
-3.1 POST /checkUserToken
+3A. POST /checkUserToken
    ```
    curl -X 'POST' \
     'http://127.0.0.1:3000/checkUserToken' \
@@ -65,7 +65,7 @@ sequenceDiagram
      }
    }
    ```
-3.2 GET /checkUserToken
+3B. GET /checkUserToken
    ```
    curl -X 'GET' \
     'http://127.0.0.1:3000/checkUserToken' \
