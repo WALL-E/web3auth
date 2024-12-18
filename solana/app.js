@@ -24,7 +24,7 @@ const port = process.env.PORT || 3000;
 const SLAT = process.env.SALT;
 const KEY = process.env.KEY;
 const IV = process.env.IV;
-const MINBALANCE = process.env.MINBALANCE;
+const MIN_BALANCE = process.env.MIN_BALANCE;
 const CLUSTER = process.env.CLUSTER;
 
 app.use(express.json());
@@ -97,11 +97,11 @@ app.post('/getUserToken', async function (req, res) {
     ///
     // verify balance
     //
-    if (MINBALANCE > 0) {
+    if (MIN_BALANCE > 0) {
         const balance = await getBalance(address)
         console.log("LAMPORTS:", balance);
-        if (balance < MINBALANCE) {
-            res.status(403).json({ error: `Account balance must be greater than ${MINBALANCE} LAMPORTS` })
+        if (balance < MIN_BALANCE) {
+            res.status(403).json({ error: `Account balance must be greater than ${MIN_BALANCE} LAMPORTS` })
             return res.end();
         }
     }
