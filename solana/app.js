@@ -33,6 +33,49 @@ function sha256(content) {
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
+function findUserId(address) {
+  const hash = sha256(address + SLAT)
+  //
+  // Maximum number of users supported,
+  // The probability of collision is extremely small
+  //
+  // C(36,16) = 7,307,872,110
+  //
+  return hash.substring(0, 16)
+}
+
+function validateAddress(address) {
+    try {
+        const publicKey = new web3.PublicKey(address);
+        const decoded = bs58.default.decode(address);
+
+        if (decoded.length !== 32) {
+            return {
+                isValid: false,
+                error: 'Invalid address length after decoding'
+            };
+        }
+
+        if (!web3.PublicKey.isOnCurve(decoded)) {
+            return {
+                isValid: false,
+                error: 'Address is not on ed25519 curve'
+            };
+        }
+
+        return {
+            isValid: true,
+            publicKey: publicKey.toBase58()
+        };
+
+    } catch (error) {
+        return {
+            isValid: false,
+            error: error.message
+        };
+    }
+}
+
 function aesEncrypt(plaintext) {
     const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
     var crypted = cipher.update(plaintext, 'utf8', 'hex');
@@ -72,14 +115,7 @@ app.post('/getUserId', function (req, res) {
     if (!address) {
         res.status(400).json({ error: "parms {address} must be set" })
     } else {
-        const hash = sha256(address + SLAT)
-        //
-        // Maximum number of users supported,
-        // The probability of collision is extremely small
-        //
-        // C(36,16) = 7,307,872,110
-        //
-        const uid = hash.substring(0, 16)
+        const uid = findUserId(address)
         res.json({ result: uid })
     }
 
@@ -105,6 +141,25 @@ app.post('/getUserToken', async function (req, res) {
             return res.end();
         }
     }
+
+    //
+    // verify address
+    //
+    const validation = validateAddress(address);
+    if (!validation.isValid) {
+        console.log('Invalid address:', validation.error);
+        res.status(400).json({ error: "address not valid!" });
+        return res.end();
+    }
+
+    //
+    // verify uid
+    //
+    if (uid != findUserId(address)) {
+        res.status(400).json({ error: "uid not valid!" });
+        return res.end();
+    }
+
     //
     // verify signature
     //
