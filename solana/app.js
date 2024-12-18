@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __importDefault =
+  (this && this.__importDefault) ||
+  function (mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
 Object.defineProperty(exports, "__esModule", { value: true });
 
 //
 // Ref: https://nodejs.org/api/crypto.html
 //
 
-require('dotenv').config();
-const express = require('express')
-const crypto = require('crypto')
+require("dotenv").config();
+const express = require("express");
+const crypto = require("crypto");
 
 const web3 = require("@solana/web3.js");
 const tweetnacl = require("tweetnacl");
 const bs58 = __importDefault(require("bs58"));
 
-const app = express()
+const app = express();
 const port = process.env.PORT || 3000;
 
 const SLAT = process.env.SALT;
@@ -30,227 +32,230 @@ const CLUSTER = process.env.CLUSTER;
 app.use(express.json());
 
 function sha256(content) {
-  return crypto.createHash('sha256').update(content).digest('hex')
+  return crypto.createHash("sha256").update(content).digest("hex");
 }
 
 function findUserId(address) {
-  const hash = sha256(address + SLAT)
+  const hash = sha256(address + SLAT);
   //
   // Maximum number of users supported,
   // The probability of collision is extremely small
   //
   // C(36,16) = 7,307,872,110
   //
-  return hash.substring(0, 16)
+  return hash.substring(0, 16);
 }
 
 function validateAddress(address) {
-    try {
-        const publicKey = new web3.PublicKey(address);
-        const decoded = bs58.default.decode(address);
+  try {
+    const publicKey = new web3.PublicKey(address);
+    const decoded = bs58.default.decode(address);
 
-        if (decoded.length !== 32) {
-            return {
-                isValid: false,
-                error: 'Invalid address length after decoding'
-            };
-        }
-
-        if (!web3.PublicKey.isOnCurve(decoded)) {
-            return {
-                isValid: false,
-                error: 'Address is not on ed25519 curve'
-            };
-        }
-
-        return {
-            isValid: true,
-            publicKey: publicKey.toBase58()
-        };
-
-    } catch (error) {
-        return {
-            isValid: false,
-            error: error.message
-        };
+    if (decoded.length !== 32) {
+      return {
+        isValid: false,
+        error: "Invalid address length after decoding",
+      };
     }
+
+    if (!web3.PublicKey.isOnCurve(decoded)) {
+      return {
+        isValid: false,
+        error: "Address is not on ed25519 curve",
+      };
+    }
+
+    return {
+      isValid: true,
+      publicKey: publicKey.toBase58(),
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      error: error.message,
+    };
+  }
 }
 
 function aesEncrypt(plaintext) {
-    const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
-    var crypted = cipher.update(plaintext, 'utf8', 'hex');
-    crypted += cipher.final('hex');
+  const cipher = crypto.createCipheriv("aes-256-cbc", KEY, IV);
+  var crypted = cipher.update(plaintext, "utf8", "hex");
+  crypted += cipher.final("hex");
 
-    return crypted;
+  return crypted;
 }
 
 function aesDecrypt(ciphertext) {
-    const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, IV);
-    var decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
+  const decipher = crypto.createDecipheriv("aes-256-cbc", KEY, IV);
+  var decrypted = decipher.update(ciphertext, "hex", "utf8");
+  decrypted += decipher.final("utf8");
 
-    return decrypted;
+  return decrypted;
 }
 
 async function getBalance(address) {
-    const connection = new web3.Connection(CLUSTER, 'confirmed');
-    const wallet = new web3.PublicKey(address);
-    const balance = await connection.getBalance(wallet);
+  const connection = new web3.Connection(CLUSTER, "confirmed");
+  const wallet = new web3.PublicKey(address);
+  const balance = await connection.getBalance(wallet);
 
-    return balance;
+  return balance;
 }
 
-app.get('/', (req, res) => {
-    res.json({ message: "Web3 User Authentication Service" })
+app.get("/", (req, res) => {
+  res.json({ message: "Web3 User Authentication Service" });
+  return res.end();
+});
+
+app.get("/health", (req, res) => {
+  res.json({ message: "ok" });
+  return res.end();
+});
+
+app.post("/getUserId", function (req, res) {
+  const address = req.body.address;
+  if (!address) {
+    res.status(400).json({ error: "parms {address} must be set" });
+  } else {
+    const uid = findUserId(address);
+    res.json({ result: uid });
+  }
+
+  return res.end();
+});
+
+app.post("/getUserToken", async function (req, res) {
+  const address = req.body.address;
+  const signature = req.body.signature;
+  const uid = req.body.uid;
+  if (!address || !signature || !uid) {
+    res
+      .status(400)
+      .json({ error: "parms {address, signature, uid} must be set" });
     return res.end();
-})
+  }
+  ///
+  // verify balance
+  //
+  if (MIN_BALANCE > 0) {
+    const balance = await getBalance(address);
+    console.log("LAMPORTS:", balance);
+    if (balance < MIN_BALANCE) {
+      res.status(403).json({
+        error: `Account balance must be greater than ${MIN_BALANCE} LAMPORTS`,
+      });
+      return res.end();
+    }
+  }
 
-app.get('/health', (req, res) => {
-    res.json({ message: "ok" })
+  //
+  // verify address
+  //
+  const validation = validateAddress(address);
+  if (!validation.isValid) {
+    console.log("Invalid address:", validation.error);
+    res.status(400).json({ error: "address not valid!" });
     return res.end();
-})
+  }
 
-app.post('/getUserId', function (req, res) {
-    const address = req.body.address;
-    if (!address) {
-        res.status(400).json({ error: "parms {address} must be set" })
-    } else {
-        const uid = findUserId(address)
-        res.json({ result: uid })
-    }
-
+  //
+  // verify uid
+  //
+  if (uid != findUserId(address)) {
+    res.status(400).json({ error: "uid not valid!" });
     return res.end();
-})
+  }
 
-app.post('/getUserToken', async function (req, res) {
-    const address = req.body.address;
-    const signature = req.body.signature;
-    const uid = req.body.uid;
-    if (!address || !signature || !uid) {
-        res.status(400).json({ error: "parms {address, signature, uid} must be set" })
-        return res.end();
+  //
+  // verify signature
+  //
+  try {
+    const publicKey = new web3.PublicKey(address);
+    const messageBytes = new TextEncoder().encode(uid);
+    const result = tweetnacl.sign.detached.verify(
+      messageBytes,
+      bs58.default.decode(signature),
+      publicKey.toBytes()
+    );
+    if (!result) {
+      res.status(400).json({ error: "signature not valid!" });
+      return res.end();
     }
-    ///
-    // verify balance
-    //
-    if (MIN_BALANCE > 0) {
-        const balance = await getBalance(address)
-        console.log("LAMPORTS:", balance);
-        if (balance < MIN_BALANCE) {
-            res.status(403).json({ error: `Account balance must be greater than ${MIN_BALANCE} LAMPORTS` })
-            return res.end();
-        }
-    }
+  } catch (error) {
+    console.error("Error in getUserToken[1]:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+    return res.end();
+  }
 
-    //
-    // verify address
-    //
-    const validation = validateAddress(address);
-    if (!validation.isValid) {
-        console.log('Invalid address:', validation.error);
-        res.status(400).json({ error: "address not valid!" });
-        return res.end();
-    }
+  //
+  // generate token
+  //
+  const plaintext = address + "," + uid;
+  try {
+    const ciphertext = aesEncrypt(plaintext);
+    res.json({ result: ciphertext });
+    return res.end();
+  } catch (error) {
+    console.error("Error in getUserToken[2]:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+    return res.end();
+  }
+});
 
-    //
-    // verify uid
-    //
-    if (uid != findUserId(address)) {
-        res.status(400).json({ error: "uid not valid!" });
-        return res.end();
-    }
+app.post("/checkUserToken", function (req, res) {
+  const ciphertext = req.body.token;
+  if (!ciphertext) {
+    res.status(400).json({ error: "parms {token} must be set" });
+    return res.end();
+  }
 
-    //
-    // verify signature
-    //
-    try {
-        const publicKey = new web3.PublicKey(address);
-        const messageBytes = new TextEncoder().encode(uid)
-        const result = tweetnacl.sign.detached.verify(
-            messageBytes,
-            bs58.default.decode(signature),
-            publicKey.toBytes(),
-        );
-        if(!result) {
-            res.status(400).json({ error: "signature not valid!" });
-            return res.end();
-        }
-    } catch (error) {
-        console.error('Error in getUserToken[1]:', error.message);
-        res.status(500).json({ error: "Internal server error" });
-        return res.end();
-    }
+  try {
+    const plaintext = aesDecrypt(ciphertext);
+    const tmp = plaintext.split(",");
 
-    //
-    // generate token
-    //
-    const plaintext = address + "," + uid
-    try {
-        const ciphertext = aesEncrypt(plaintext);
-        res.json({ result: ciphertext })
-        return res.end();
-    } catch (error) {
-        console.error('Error in getUserToken[2]:', error.message);
-        res.status(500).json({ error: "Internal server error" });
-        return res.end();
-    }
-})
+    res.json({
+      result: {
+        address: tmp[0],
+        uid: tmp[1],
+      },
+    });
+    return res.end();
+  } catch (error) {
+    console.error("Error in checkUserToken[1]:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+    return res.end();
+  }
+});
 
-app.post('/checkUserToken', function (req, res) {
-    const ciphertext = req.body.token;
-    if (!ciphertext) {
-        res.status(400).json({ error: "parms {token} must be set" })
-        return res.end();
-    }
+app.get("/checkUserToken", function (req, res) {
+  const ciphertext = req.get("token");
+  if (!ciphertext) {
+    res.status(400).json({ error: "headers {token} must be set" });
+    return res.end();
+  }
 
-    try {
-        const plaintext = aesDecrypt(ciphertext);
-        const tmp = plaintext.split(",")
+  try {
+    const plaintext = aesDecrypt(ciphertext);
+    const tmp = plaintext.split(",");
 
-        res.json({
-            result: {
-                address: tmp[0],
-                uid: tmp[1]
-            }
-        })
-        return res.end();
-    } catch (error) {
-        console.error('Error in checkUserToken[1]:', error.message);
-        res.status(500).json({ error: "Internal server error" });
-        return res.end();
-    }
-})
-
-app.get('/checkUserToken', function (req, res) {
-    const ciphertext = req.get("token");
-    if (!ciphertext) {
-        res.status(400).json({ error: "headers {token} must be set" })
-        return res.end();
-    }
-
-    try {
-        const plaintext = aesDecrypt(ciphertext);
-        const tmp = plaintext.split(",")
-
-        res.json({
-            result: {
-                address: tmp[0],
-                uid: tmp[1]
-            }
-        })
-        return res.end();
-    } catch (error) {
-        console.error('Error in checkUserToken[2]:', error.message);
-        res.status(500).json({ error: "Internal server error" });
-        return res.end();
-    }
-})
+    res.json({
+      result: {
+        address: tmp[0],
+        uid: tmp[1],
+      },
+    });
+    return res.end();
+  } catch (error) {
+    console.error("Error in checkUserToken[2]:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+    return res.end();
+  }
+});
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send({ error: "something broke!" });
+  console.error(err.stack);
+  res.status(500).send({ error: "An unknown error has occurred" });
 });
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Web3auth app listening on port ${port}`);
+});
