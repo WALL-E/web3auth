@@ -1,14 +1,14 @@
 {
-  "name": "solana",
-  "version": "1.0.0",
+  "name": "web3auth",
+  "version": "0.9.10",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
+  "description": "web3auth app",
   "dependencies": {
     "@solana/web3.js": "^1.95.5",
     "bs58": "^6.0.0",
