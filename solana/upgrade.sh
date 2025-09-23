@@ -8,6 +8,6 @@ docker rmi -f $APP:latest
 docker build -t $APP .
 docker run -itd \
         --restart always \
-        --network host \
+        -p 4000:4000 \
         --name $APP \
         $APP:latest
