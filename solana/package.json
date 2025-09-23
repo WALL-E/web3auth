@@ -1,20 +1,30 @@
 {
   "name": "web3auth",
-  "version": "0.9.10",
+  "version": "1.0.0",
+  "type": "module",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "test": "node test-api.js",
+    "test:unit": "echo \"Error: no unit tests specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["web3", "solana", "authentication", "crypto"],
   "author": "",
   "license": "MIT",
-  "description": "web3auth app",
+  "description": "Web3 User Authentication Service for Solana",
   "dependencies": {
     "@solana/web3.js": "^1.95.5",
     "bs58": "^6.0.0",
-    "crypto": "^1.0.1",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "node-fetch": "^3.3.2",
     "tweetnacl": "^1.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

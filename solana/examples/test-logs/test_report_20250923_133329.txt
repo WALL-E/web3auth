@@ -1,0 +1,17 @@
+开始时间: 2025年 9月23日 星期二 13时33分29秒 CST
+服务器地址: http://127.0.0.1:4000
+测试脚本目录: /Users/zhangzheng/web3auth/solana/examples
+
+✅ health.sh - 通过 (0s)
+✅ getUserId.sh - 通过 (0s)
+✅ getUserToken.sh - 通过 (0s)
+✅ checkUserToken.sh - 通过 (1s)
+
+结束时间: 2025年 9月23日 星期二 13时33分34秒 CST
+
+测试统计:
+  总脚本数: 4
+  通过脚本: 4
+  失败脚本: 0
+  跳过脚本: 0
+  成功率: 100%

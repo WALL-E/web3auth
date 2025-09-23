@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-#
-
 APP=web3auth
 
 docker rm -f $APP

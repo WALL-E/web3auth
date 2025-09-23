@@ -1,0 +1,5 @@
+开始时间: 2025年 9月23日 星期二 13时04分02秒 CST
+服务器地址: http://127.0.0.1:4000
+测试脚本目录: /Users/zhangzheng/web3auth/solana/examples
+
+❌ health.sh - 失败 (0s)

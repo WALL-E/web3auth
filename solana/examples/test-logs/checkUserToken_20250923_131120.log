@@ -1,0 +1,211 @@
+[0;34m================================[0m
+[0;34m  checkUserToken Endpoint Test[0m
+[0;34m================================[0m
+
+[0;34mℹ️  检查服务器连接...[0m
+[0;34mℹ️  服务器连接正常[0m
+
+[1;33m⚠️  注意: checkUserToken端点需要有效的token进行验证[0m
+[1;33m⚠️  以下测试使用示例token，实际使用时需要从getUserToken获取真实token[0m
+
+[0;34m=== POST方法测试 ===[0m
+
+[1;33m🧪 测试 1: 缺少token字段 (POST)[0m
+请求方法: POST
+请求数据: {}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in body"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in body[0m
+
+[1;33m🧪 测试 2: 空token字段 (POST)[0m
+请求方法: POST
+请求数据: {"token": ""}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in body"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in body[0m
+
+[1;33m🧪 测试 3: null token字段 (POST)[0m
+请求方法: POST
+请求数据: {"token": null}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in body"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in body[0m
+
+[1;33m🧪 测试 4: 错误的字段名 (POST)[0m
+请求方法: POST
+请求数据: {"tok": "some_token"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in body"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in body[0m
+
+[1;33m🧪 测试 5: 无效token格式（太短） (POST)[0m
+请求方法: POST
+请求数据: {"token": "short"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 6: 无效token格式（包含非法字符） (POST)[0m
+请求方法: POST
+请求数据: {"token": "invalid@token#format"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 7: 格式正确但无效的token (POST)[0m
+请求方法: POST
+请求数据: {"token": "invalid_token_example"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 8: 修改过的token (POST)[0m
+请求方法: POST
+请求数据: {"token": "bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b69271f7e589ecfe50823b8ddbe6469eZZ"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 9: 示例有效token (POST)[0m
+请求方法: POST
+请求数据: {"token": "bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b69271f7e589ecfe50823b8ddbe6469eff"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 10: 额外字段 (POST)[0m
+请求方法: POST
+请求数据: {"token": "bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b69271f7e589ecfe50823b8ddbe6469eff", "extra": "field"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[0;34m=== GET方法测试 ===[0m
+
+[1;33m🧪 测试 11: 缺少token header (GET)[0m
+请求方法: GET
+Token Header: '(未提供)'
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in header"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in header[0m
+
+[1;33m🧪 测试 12: 空token header (GET)[0m
+请求方法: GET
+Token Header: '(未提供)'
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Token must be provided in header"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Token must be provided in header[0m
+
+[1;33m🧪 测试 13: 无效token格式（太短） (GET)[0m
+请求方法: GET
+Token Header: short
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 14: 无效token格式（包含非法字符） (GET)[0m
+请求方法: GET
+Token Header: invalid@token#format
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 15: 格式正确但无效的token (GET)[0m
+请求方法: GET
+Token Header: invalid_token_example
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 16: 修改过的token (GET)[0m
+请求方法: GET
+Token Header: bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b69271f7e589ecfe50823b8ddbe6469eZZ
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[1;33m🧪 测试 17: 示例有效token (GET)[0m
+请求方法: GET
+Token Header: bec012cc4eeefe921fb5e944d851efa19a768638d1d6ec6620ed1a07f4067b026b773f616226fb3822618292597c27b69271f7e589ecfe50823b8ddbe6469eff
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid or expired token"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid or expired token[0m
+
+[0;34m=== 特殊测试 ===[0m
+
+[1;33m🧪 测试 18: 无效的JSON格式 (POST)[0m
+请求方法: POST
+请求数据: 无效JSON（缺少结束括号）
+HTTP状态码: 500
+响应内容:
+{
+  "error": "An unexpected error occurred"
+}
+[0;31m❌ 测试失败 - 期望状态码 400，实际 500[0m
+
+[0;34mℹ️  注意事项:[0m
+[0;34mℹ️  1. checkUserToken端点支持GET和POST两种方法[0m
+[0;34mℹ️  2. POST方法: token在请求体中 {"token": "your_token"}[0m
+[0;34mℹ️  3. GET方法: token在header中 -H "token: your_token"[0m
+[0;34mℹ️  4. 有效的token需要从getUserToken端点获取[0m
+[0;34mℹ️  5. token有过期时间，过期后需要重新获取[0m
+
+
+[0;34m================================[0m
+[0;34m  测试总结[0m
+[0;34m================================[0m
+总测试数: 18
+通过测试: 17
+失败测试: 1
+[0;31m❌ 有测试失败[0m

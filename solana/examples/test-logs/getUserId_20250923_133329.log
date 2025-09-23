@@ -1,0 +1,122 @@
+[0;34m================================[0m
+[0;34m  getUserId Endpoint Test[0m
+[0;34m================================[0m
+
+[0;34mℹ️  检查服务器连接...[0m
+[0;34mℹ️  服务器连接正常[0m
+
+[1;33m🧪 测试 1: 有效的Solana地址[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV"}
+HTTP状态码: 200
+响应内容:
+{
+  "result": "c9fe7bf01a33e35c"
+}
+[0;32m✅ 测试通过 - 获得用户ID: c9fe7bf01a33e35c[0m
+
+[1;33m🧪 测试 2: 系统程序地址（不在ed25519曲线上）[0m
+请求数据: {"address": "11111111111111111111111111111112"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Address is not on ed25519 curve"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 3: 无效地址（包含非base58字符）[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqZ0"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Non-base58 character"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 4: 无效地址（太短）[0m
+请求数据: {"address": "123"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Invalid public key input"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 5: 无效地址（太长）[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Invalid public key input"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 6: 缺少address字段[0m
+请求数据: {"addr": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 7: 空的address字段[0m
+请求数据: {"address": ""}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 8: null的address字段[0m
+请求数据: {"address": null}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 9: 空的请求体[0m
+请求数据: {}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 10: 无效的JSON格式[0m
+请求数据: 无效JSON（缺少结束括号）
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid JSON format",
+  "details": "Request body contains malformed JSON"
+}
+[0;32m✅ 测试通过 - 正确处理无效JSON[0m
+
+
+[0;34m================================[0m
+[0;34m  测试总结[0m
+[0;34m================================[0m
+总测试数: 10
+通过测试: 10
+失败测试: 0
+[0;32m🎉 所有测试通过！[0m

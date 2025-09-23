@@ -1,0 +1,190 @@
+[0;34m================================[0m
+[0;34m  getUserToken Endpoint Test[0m
+[0;34m================================[0m
+
+[0;34mℹ️  检查服务器连接...[0m
+[0;34mℹ️  服务器连接正常[0m
+
+[1;33m⚠️  注意: getUserToken端点需要有效的签名验证[0m
+[1;33m⚠️  以下测试使用示例数据，实际使用时需要真实的签名[0m
+
+[1;33m🧪 测试 1: 缺少所有必需参数[0m
+请求数据: {}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address",
+    "signature",
+    "uid"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 2: 只有address参数[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "signature",
+    "uid"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 3: 缺少signature参数[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "c9fe7bf01a33e35c"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "signature"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 4: 缺少uid参数[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "uid"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 5: 无效的address格式[0m
+请求数据: {"address": "invalid_address", "uid": "c9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Non-base58 character"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 6: 无效的signature格式（太短）[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "c9fe7bf01a33e35c", "signature": "short"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid signature",
+  "details": "Signature must be 64 bytes"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid signature[0m
+
+[1;33m🧪 测试 7: 无效的uid格式（太短）[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "123", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid uid"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid uid[0m
+
+[1;33m🧪 测试 8: 空字符串参数[0m
+请求数据: {"address": "", "uid": "", "signature": ""}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address",
+    "signature",
+    "uid"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 9: null参数[0m
+请求数据: {"address": null, "uid": null, "signature": null}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Missing required fields",
+  "missing": [
+    "address",
+    "signature",
+    "uid"
+  ]
+}
+[0;32m✅ 测试通过 - 正确返回错误: Missing required fields[0m
+
+[1;33m🧪 测试 10: 有效格式但无效签名[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "c9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8INVALID"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid signature",
+  "details": "Non-base58 character"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid signature[0m
+
+[1;33m🧪 测试 11: 修改过的地址（签名不匹配）[0m
+请求数据: {"address": "11111111111111111111111111111112", "uid": "c9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid address",
+  "details": "Address is not on ed25519 curve"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid address[0m
+
+[1;33m🧪 测试 12: 修改过的uid（签名不匹配）[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "d9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid uid"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid uid[0m
+
+[1;33m🧪 测试 13: 修改过的签名[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "c9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VZZ"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid signature"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Invalid signature[0m
+
+[1;33m🧪 测试 14: 额外的字段[0m
+请求数据: {"address": "7iCzEsN1xrV9gZoWMvUaWKhAhy1Cqm9iAeVAmJVThCqV", "uid": "c9fe7bf01a33e35c", "signature": "397KqXkGyYkxxdBNUqDY1fpvVv7ccXFeJoDmieeawN2KPGmNbthvTPMDDcEM1NDnGTftcMf7EFnTSUoDG2Pg8VY5", "extra": "field"}
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Extra fields not allowed",
+  "details": "Unexpected fields: extra"
+}
+[0;32m✅ 测试通过 - 正确返回错误: Extra fields not allowed[0m
+
+[1;33m🧪 测试 15: 无效的JSON格式[0m
+请求数据: 无效JSON（缺少结束）
+HTTP状态码: 400
+响应内容:
+{
+  "error": "Invalid JSON format",
+  "details": "Request body contains malformed JSON"
+}
+[0;32m✅ 测试通过 - 正确处理无效JSON[0m
+
+[0;34mℹ️  注意事项:[0m
+[0;34mℹ️  1. getUserToken端点需要有效的Solana签名验证[0m
+[0;34mℹ️  2. 签名必须是使用私钥对 'uid' 进行签名的结果[0m
+[0;34mℹ️  3. 地址必须与签名的公钥匹配[0m
+[0;34mℹ️  4. 在实际使用中，需要使用Solana钱包生成真实的签名[0m
+
+
+[0;34m================================[0m
+[0;34m  测试总结[0m
+[0;34m================================[0m
+总测试数: 15
+通过测试: 15
+失败测试: 0
+[0;32m🎉 所有测试通过！[0m

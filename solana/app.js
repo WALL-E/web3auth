@@ -1,261 +1,344 @@
 #!/usr/bin/env node
 
-"use strict";
-var __importDefault =
-  (this && this.__importDefault) ||
-  function (mod) {
-    return mod && mod.__esModule ? mod : { default: mod };
-  };
-Object.defineProperty(exports, "__esModule", { value: true });
+import 'dotenv/config';
+import express from 'express';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import cors from 'cors';
+import { Connection, PublicKey } from '@solana/web3.js';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 
-//
-// Ref: https://nodejs.org/api/crypto.html
-//
-
-require("dotenv").config();
-const express = require("express");
-const crypto = require("crypto");
-
-const web3 = require("@solana/web3.js");
-const tweetnacl = require("tweetnacl");
-const bs58 = __importDefault(require("bs58"));
+// Environment variables validation
+const requiredEnvVars = ['SALT', 'KEY', 'IV', 'CLUSTER'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 
-const SLAT = process.env.SALT;
-const KEY = process.env.KEY;
-const IV = process.env.IV;
-const MIN_BALANCE = process.env.MIN_BALANCE;
+// Environment variables
+const SALT = process.env.SALT;
+const KEY = Buffer.from(process.env.KEY, 'hex');
+const IV = Buffer.from(process.env.IV, 'hex');
+const MIN_BALANCE = parseInt(process.env.MIN_BALANCE) || 0;
 const CLUSTER = process.env.CLUSTER;
 
-app.use(express.json());
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  credentials: true
+}));
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later' }
+});
+app.use(limiter);
+
+// Body parser with error handling
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf, encoding) => {
+    // Store raw body for potential error handling
+    req.rawBody = buf;
+  }
+}));
+
+// JSON parsing error handler
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('JSON parsing error:', err.message);
+    return res.status(400).json({ 
+      error: 'Invalid JSON format',
+      details: 'Request body contains malformed JSON'
+    });
+  }
+  next(err);
+});
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${new Date().toISOString()} ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+
+// Utility functions
 function sha256(content) {
-  return crypto.createHash("sha256").update(content).digest("hex");
+  return crypto.createHash('sha256').update(content).digest('hex');
 }
 
 function findUserId(address) {
-  const hash = sha256(address + SLAT);
-  //
-  // Maximum number of users supported,
+  const hash = sha256(address + SALT);
+  // Maximum number of users supported: C(36,16) = 7,307,872,110
   // The probability of collision is extremely small
-  //
-  // C(36,16) = 7,307,872,110
-  //
   return hash.substring(0, 16);
 }
 
 function validateAddress(address) {
   try {
-    const publicKey = new web3.PublicKey(address);
-    const decoded = bs58.default.decode(address);
+    if (!address || typeof address !== 'string') {
+      return { isValid: false, error: 'Address must be a non-empty string' };
+    }
+
+    const publicKey = new PublicKey(address);
+    const decoded = bs58.decode(address);
 
     if (decoded.length !== 32) {
-      return {
-        isValid: false,
-        error: "Invalid address length after decoding",
-      };
+      return { isValid: false, error: 'Invalid address length after decoding' };
     }
 
-    if (!web3.PublicKey.isOnCurve(decoded)) {
-      return {
-        isValid: false,
-        error: "Address is not on ed25519 curve",
-      };
+    if (!PublicKey.isOnCurve(decoded)) {
+      return { isValid: false, error: 'Address is not on ed25519 curve' };
     }
 
-    return {
-      isValid: true,
-      publicKey: publicKey.toBase58(),
-    };
+    return { isValid: true, publicKey: publicKey.toBase58() };
   } catch (error) {
-    return {
-      isValid: false,
-      error: error.message,
-    };
+    return { isValid: false, error: error.message };
   }
 }
 
 function aesEncrypt(plaintext) {
-  const cipher = crypto.createCipheriv("aes-256-cbc", KEY, IV);
-  var crypted = cipher.update(plaintext, "utf8", "hex");
-  crypted += cipher.final("hex");
-
-  return crypted;
+  try {
+    const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
+    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
+  } catch (error) {
+    throw new Error('Encryption failed: ' + error.message);
+  }
 }
 
 function aesDecrypt(ciphertext) {
-  const decipher = crypto.createDecipheriv("aes-256-cbc", KEY, IV);
-  var decrypted = decipher.update(ciphertext, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-
-  return decrypted;
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, IV);
+    let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    throw new Error('Decryption failed: ' + error.message);
+  }
 }
 
 async function getBalance(address) {
-  const connection = new web3.Connection(CLUSTER, "confirmed");
-  const wallet = new web3.PublicKey(address);
-  const balance = await connection.getBalance(wallet);
-
-  return balance;
+  try {
+    const connection = new Connection(CLUSTER, 'confirmed');
+    const wallet = new PublicKey(address);
+    const balance = await connection.getBalance(wallet);
+    return balance;
+  } catch (error) {
+    throw new Error('Failed to get balance: ' + error.message);
+  }
 }
 
-app.get("/", (req, res) => {
-  res.json({ message: "Web3 User Authentication Service" });
-  return res.end();
+// Input validation middleware
+function validateRequiredFields(fields) {
+  return (req, res, next) => {
+    const missing = fields.filter(field => !req.body[field]);
+    if (missing.length > 0) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missing: missing
+      });
+    }
+    next();
+  };
+}
+
+// Error response helper
+function sendError(res, status, message, details = null) {
+  const response = { error: message };
+  if (details) response.details = details;
+  return res.status(status).json(response);
+}
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Web3 User Authentication Service',
+    version: '1.0.0',
+    endpoints: ['/health', '/getUserId', '/getUserToken', '/checkUserToken']
+  });
 });
 
-app.get("/health", (req, res) => {
-  res.json({ message: "ok" });
-  return res.end();
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
-app.post("/getUserId", function (req, res) {
-  const address = req.body.address;
-  if (!address) {
-    res.status(400).json({ error: "parms {address} must be set" });
-  } else {
+app.post('/getUserId', validateRequiredFields(['address']), (req, res) => {
+  try {
+    const { address } = req.body;
+    
+    const validation = validateAddress(address);
+    if (!validation.isValid) {
+      return sendError(res, 400, 'Invalid address', validation.error);
+    }
+
     const uid = findUserId(address);
     res.json({ result: uid });
-  }
-
-  return res.end();
-});
-
-app.post("/getUserToken", async function (req, res) {
-  const address = req.body.address;
-  const signature = req.body.signature;
-  const uid = req.body.uid;
-  if (!address || !signature || !uid) {
-    res
-      .status(400)
-      .json({ error: "parms {address, signature, uid} must be set" });
-    return res.end();
-  }
-  ///
-  // verify balance
-  //
-  if (MIN_BALANCE > 0) {
-    const balance = await getBalance(address);
-    console.log("LAMPORTS:", balance);
-    if (balance < MIN_BALANCE) {
-      res.status(403).json({
-        error: `Account balance must be greater than ${MIN_BALANCE} LAMPORTS`,
-      });
-      return res.end();
-    }
-  }
-
-  //
-  // verify address
-  //
-  const validation = validateAddress(address);
-  if (!validation.isValid) {
-    console.log("Invalid address:", validation.error);
-    res.status(400).json({ error: "address not valid!" });
-    return res.end();
-  }
-
-  //
-  // verify uid
-  //
-  if (uid != findUserId(address)) {
-    res.status(400).json({ error: "uid not valid!" });
-    return res.end();
-  }
-
-  //
-  // verify signature
-  //
-  try {
-    const publicKey = new web3.PublicKey(address);
-    const messageBytes = new TextEncoder().encode(uid);
-    const result = tweetnacl.sign.detached.verify(
-      messageBytes,
-      bs58.default.decode(signature),
-      publicKey.toBytes()
-    );
-    if (!result) {
-      res.status(400).json({ error: "signature not valid!" });
-      return res.end();
-    }
   } catch (error) {
-    console.error("Error in getUserToken[1]:", error.message);
-    res.status(500).json({ error: "Internal server error" });
-    return res.end();
-  }
-
-  //
-  // generate token
-  //
-  const plaintext = address + "," + uid;
-  try {
-    const ciphertext = aesEncrypt(plaintext);
-    res.json({ result: ciphertext });
-    return res.end();
-  } catch (error) {
-    console.error("Error in getUserToken[2]:", error.message);
-    res.status(500).json({ error: "Internal server error" });
-    return res.end();
+    console.error('Error in getUserId:', error.message);
+    sendError(res, 500, 'Internal server error');
   }
 });
 
-app.post("/checkUserToken", function (req, res) {
-  const ciphertext = req.body.token;
-  if (!ciphertext) {
-    res.status(400).json({ error: "parms {token} must be set" });
-    return res.end();
-  }
-
+app.post('/getUserToken', validateRequiredFields(['address', 'signature', 'uid']), async (req, res) => {
   try {
-    const plaintext = aesDecrypt(ciphertext);
-    const tmp = plaintext.split(",");
+    const { address, signature, uid } = req.body;
+    
+    // Check for extra fields
+    const allowedFields = ['address', 'signature', 'uid'];
+    const requestFields = Object.keys(req.body);
+    const extraFields = requestFields.filter(field => !allowedFields.includes(field));
+    
+    if (extraFields.length > 0) {
+      return sendError(res, 400, 'Extra fields not allowed', `Unexpected fields: ${extraFields.join(', ')}`);
+    }
+
+    // Verify balance if minimum balance is set
+    if (MIN_BALANCE > 0) {
+      const balance = await getBalance(address);
+      console.log('Account balance (LAMPORTS):', balance);
+      if (balance < MIN_BALANCE) {
+        return sendError(res, 403, `Account balance must be greater than ${MIN_BALANCE} LAMPORTS`);
+      }
+    }
+
+    // Verify address
+    const validation = validateAddress(address);
+    if (!validation.isValid) {
+      return sendError(res, 400, 'Invalid address', validation.error);
+    }
+
+    // Verify uid
+    const expectedUid = findUserId(address);
+    if (uid !== expectedUid) {
+      return sendError(res, 400, 'Invalid uid');
+    }
+
+    // Verify signature
+    try {
+      const publicKey = new PublicKey(address);
+      const messageBytes = new TextEncoder().encode(uid);
+      const signatureBytes = bs58.decode(signature);
+      
+      // Check signature size
+      if (signatureBytes.length !== 64) {
+        return sendError(res, 400, 'Invalid signature', 'Signature must be 64 bytes');
+      }
+      
+      const isValidSignature = nacl.sign.detached.verify(
+        messageBytes,
+        signatureBytes,
+        publicKey.toBytes()
+      );
+
+      if (!isValidSignature) {
+        return sendError(res, 400, 'Invalid signature');
+      }
+    } catch (error) {
+      console.error('Signature verification error:', error.message);
+      return sendError(res, 400, 'Invalid signature', error.message);
+    }
+
+    // Generate token
+    try {
+      const plaintext = `${address},${uid}`;
+      const token = aesEncrypt(plaintext);
+      res.json({ result: token });
+    } catch (error) {
+      console.error('Token generation error:', error.message);
+      return sendError(res, 500, 'Token generation failed');
+    }
+  } catch (error) {
+    console.error('Error in getUserToken:', error.message);
+    sendError(res, 500, 'Internal server error');
+  }
+});
+
+// Unified checkUserToken handler
+function handleCheckUserToken(req, res) {
+  try {
+    // Get token from body (POST) or header (GET)
+    const token = req.body?.token || req.get('token');
+    
+    if (!token) {
+      const source = req.method === 'POST' ? 'body' : 'header';
+      return sendError(res, 400, `Token must be provided in ${source}`);
+    }
+
+    const plaintext = aesDecrypt(token);
+    const parts = plaintext.split(',');
+    
+    if (parts.length !== 2) {
+      return sendError(res, 400, 'Invalid token format');
+    }
+
+    const [address, uid] = parts;
+    
+    // Validate the extracted data
+    const validation = validateAddress(address);
+    if (!validation.isValid) {
+      return sendError(res, 400, 'Invalid address in token');
+    }
+
+    const expectedUid = findUserId(address);
+    if (uid !== expectedUid) {
+      return sendError(res, 400, 'Invalid uid in token');
+    }
 
     res.json({
-      result: {
-        address: tmp[0],
-        uid: tmp[1],
-      },
+      result: { address, uid }
     });
-    return res.end();
   } catch (error) {
-    console.error("Error in checkUserToken[1]:", error.message);
-    res.status(500).json({ error: "Internal server error" });
-    return res.end();
+    console.error('Error in checkUserToken:', error.message);
+    sendError(res, 400, 'Invalid or expired token');
   }
-});
+}
 
-app.get("/checkUserToken", function (req, res) {
-  const ciphertext = req.get("token");
-  if (!ciphertext) {
-    res.status(400).json({ error: "headers {token} must be set" });
-    return res.end();
-  }
+app.post('/checkUserToken', handleCheckUserToken);
+app.get('/checkUserToken', handleCheckUserToken);
 
-  try {
-    const plaintext = aesDecrypt(ciphertext);
-    const tmp = plaintext.split(",");
-
-    res.json({
-      result: {
-        address: tmp[0],
-        uid: tmp[1],
-      },
-    });
-    return res.end();
-  } catch (error) {
-    console.error("Error in checkUserToken[2]:", error.message);
-    res.status(500).json({ error: "Internal server error" });
-    return res.end();
-  }
-});
-
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send({ error: "An unknown error has occurred" });
+  console.error('Unhandled error:', err.stack);
+  sendError(res, 500, 'An unexpected error occurred');
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  sendError(res, 404, 'Endpoint not found');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
 });
 
 app.listen(port, () => {
   console.log(`Web3auth app listening on port ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Cluster: ${CLUSTER}`);
+  console.log(`Min balance: ${MIN_BALANCE} LAMPORTS`);
 });
