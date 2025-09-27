@@ -167,6 +167,7 @@ app.get('/health', (req, res) => {
   res.json({
     success: true,
     message: 'ok',
+    uptime: process.uptime(),
     bin_name: 'web3auth'
   });
 });
