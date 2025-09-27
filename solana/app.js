@@ -165,9 +165,9 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    success: true,
+    message: 'ok',
+    bin_name: 'web3auth'
   });
 });
 
