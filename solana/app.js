@@ -3,7 +3,6 @@
 import 'dotenv/config';
 import express from 'express';
 import crypto from 'crypto';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import cors from 'cors';
 import { Connection, PublicKey } from '@solana/web3.js';
@@ -34,14 +33,6 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   credentials: true
 }));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { error: 'Too many requests, please try again later' }
-});
-app.use(limiter);
 
 // Body parser with error handling
 app.use(express.json({ 
