@@ -41,7 +41,67 @@ Content-Type: application/json
 }
 ```
 
-### 4. 验证用户令牌
+### 4. 通过 Memo 获取用户令牌
+```
+POST /getUserTokenByMemo
+Content-Type: application/json
+
+{
+  "address": "solana_wallet_address",
+  "uid": "user_id_from_step_2",
+  "transaction": "base58_signed_transaction_with_memo_equal_uid"
+}
+```
+
+- 请求参数说明
+  - `address`: 用户的 Solana 钱包地址（base58 字符串）
+  - `uid`: 通过 `/getUserId` 获取的用户 ID
+  - `transaction`: 已签名且序列化为 base58 的交易字符串，交易内需包含 Memo 指令，其内容必须严格等于 `uid`
+
+- 响应示例
+```
+200 OK
+{
+  "result": "encrypted_token"
+}
+```
+
+- 校验规则
+  - 验证交易中签名者列表包含 `address`
+  - 解析交易中的 Memo 指令并校验其 UTF-8 内容等于 `uid`
+  - 交易必须是已签名的 base58 序列化字符串
+  - 使用配置的集群（`CLUSTER`），在服务器端完成解析与验证
+
+- 可能的错误
+  - `400 Invalid address`：地址格式不合法
+  - `400 Invalid uid`：uid 为空或格式错误
+  - `400 Invalid transaction`：交易无法解析或非已签名交易
+  - `400 Signature not found`：交易不包含该地址的有效签名
+  - `400 Memo mismatch`：交易中的 Memo 内容不等于 `uid`
+  - `429 Too Many Requests`：触发速率限制
+  - `500 Internal Server Error`：服务器内部错误
+
+- 使用示例
+```bash
+# 1) 获取 UID
+curl -s -X POST 'http://127.0.0.1:4000/getUserId' \
+  -H 'Content-Type: application/json' \
+  -d '{"address":"<YOUR_ADDRESS>"}'
+
+# 2) 使用 Ledger 生成包含 UID 的 Memo 交易并签名（两种方式）
+# 方式 A：交互式工具
+node solana/ledger/sign-memo.js "<UID>"
+
+# 方式 B：一键测试程序
+cd solana/ledger && ./run-test.sh
+
+# 3) 调用 Memo 接口获取 Token
+curl -s -X POST 'http://127.0.0.1:4000/getUserTokenByMemo' \
+  -H 'Content-Type: application/json' \
+  -d '{"address":"<YOUR_ADDRESS>","uid":"<UID>","transaction":"<BASE58_TX>"}'
+```
+
+### 5. 验证用户令牌
 ```
 POST /checkUserToken
 Content-Type: application/json
