@@ -9,11 +9,18 @@
     "test": "node test-api.js",
     "test:unit": "echo \"Error: no unit tests specified\" && exit 1"
   },
-  "keywords": ["web3", "solana", "authentication", "crypto"],
+  "keywords": [
+    "web3",
+    "solana",
+    "authentication",
+    "crypto"
+  ],
   "author": "",
   "license": "MIT",
   "description": "Web3 User Authentication Service for Solana",
   "dependencies": {
+    "@ledgerhq/hw-app-solana": "^7.5.4",
+    "@ledgerhq/hw-transport-node-hid": "^6.29.12",
     "@solana/web3.js": "^1.95.5",
     "bs58": "^6.0.0",
     "cors": "^2.8.5",

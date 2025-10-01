@@ -5,7 +5,7 @@ import express from 'express';
 import crypto from 'crypto';
 import helmet from 'helmet';
 import cors from 'cors';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
@@ -159,7 +159,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'Web3 User Authentication Service',
     version: '1.0.0',
-    endpoints: ['/health', '/getUserId', '/getUserToken', '/checkUserToken']
+    endpoints: ['/health', '/getUserId', '/getUserToken', '/getUserTokenByMemo', '/checkUserToken']
   });
 });
 
@@ -259,6 +259,114 @@ app.post('/getUserToken', validateRequiredFields(['address', 'signature', 'uid']
     }
   } catch (error) {
     console.error('Error in getUserToken:', error.message);
+    sendError(res, 500, 'Internal server error');
+  }
+});
+
+// Verify a base58-encoded serialized transaction contains a valid signature from address
+function verifyTransactionSignatureByAddress(transactionBase58, address, uid) {
+  try {
+    const txBytes = bs58.decode(transactionBase58);
+    const tx = Transaction.from(txBytes);
+
+    // Extract signers from compiled message
+    const message = tx.compileMessage();
+    const signerKeys = message.accountKeys
+      .slice(0, message.header.numRequiredSignatures);
+    const signerBase58s = signerKeys.map(k => k.toBase58());
+
+    // Ensure the address is among required signers
+    if (!signerBase58s.includes(address)) {
+      return { ok: false, reason: 'Address is not among required signers', signers: signerBase58s };
+    }
+
+    // Find signature corresponding to the address
+    const targetPubkey = new PublicKey(address);
+    const sigEntry = tx.signatures.find(s => s.publicKey.equals(targetPubkey));
+    if (!sigEntry || !sigEntry.signature) {
+      return { ok: false, reason: 'Signature for address not found', signers: signerBase58s };
+    }
+
+    // Verify signature against the message bytes
+    const msgBytes = tx.serializeMessage();
+    const isValid = nacl.sign.detached.verify(
+      new Uint8Array(msgBytes),
+      new Uint8Array(sigEntry.signature),
+      targetPubkey.toBytes()
+    );
+
+    if (!isValid) {
+      return { ok: false, reason: 'Invalid signature for address', signers: signerBase58s };
+    }
+
+    // Validate memo content equals provided uid (Memo must be present)
+    const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+    const memoIx = tx.instructions?.find(ix => ix.programId?.toBase58() === MEMO_PROGRAM_ID);
+    const memoText = memoIx && memoIx.data ? Buffer.from(memoIx.data).toString('utf8') : null;
+    if (!memoText) {
+      return { ok: false, reason: 'Memo instruction not found or empty', signers: signerBase58s, memo: null };
+    }
+    if (memoText !== uid) {
+      return { ok: false, reason: 'Memo does not match uid', signers: signerBase58s, memo: memoText };
+    }
+
+    return { ok: true, signers: signerBase58s, memo: memoText };
+  } catch (error) {
+    return { ok: false, reason: error.message, signers: [], memo: null };
+  }
+}
+
+// Get user token by verifying signature inside a serialized transaction (e.g., memo transaction)
+app.post('/getUserTokenByMemo', validateRequiredFields(['address', 'uid', 'transaction']), async (req, res) => {
+  try {
+    const { address, uid, transaction } = req.body;
+
+    // Check for extra fields
+    const allowedFields = ['address', 'uid', 'transaction'];
+    const requestFields = Object.keys(req.body);
+    const extraFields = requestFields.filter(field => !allowedFields.includes(field));
+    if (extraFields.length > 0) {
+      return sendError(res, 400, 'Extra fields not allowed', `Unexpected fields: ${extraFields.join(', ')}`);
+    }
+
+    // Verify address
+    const validation = validateAddress(address);
+    if (!validation.isValid) {
+      return sendError(res, 400, 'Invalid address', validation.error);
+    }
+
+    // Verify uid matches address-derived id
+    const expectedUid = findUserId(address);
+    if (uid !== expectedUid) {
+      return sendError(res, 400, 'Invalid uid');
+    }
+
+    // Optional: verify balance if minimum balance is set (consistent with getUserToken)
+    if (MIN_BALANCE > 0) {
+      const balance = await getBalance(address);
+      console.log('Account balance (LAMPORTS):', balance);
+      if (balance < MIN_BALANCE) {
+        return sendError(res, 403, `Account balance must be greater than ${MIN_BALANCE} LAMPORTS`);
+      }
+    }
+
+    // Verify transaction contains a valid signature from the address
+    const check = verifyTransactionSignatureByAddress(transaction, address, uid);
+    if (!check.ok) {
+      return sendError(res, 400, 'Signature verification failed', check.reason);
+    }
+
+    // Generate token (same rule as getUserToken)
+    try {
+      const plaintext = `${address},${uid}`;
+      const token = aesEncrypt(plaintext);
+      res.json({ result: token });
+    } catch (error) {
+      console.error('Token generation error:', error.message);
+      return sendError(res, 500, 'Token generation failed');
+    }
+  } catch (error) {
+    console.error('Error in getUserTokenByMemo:', error.message);
     sendError(res, 500, 'Internal server error');
   }
 });
